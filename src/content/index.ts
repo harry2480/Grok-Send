@@ -4,103 +4,101 @@
  */
 
 const findSendButton = (): HTMLElement | null => {
-    // 1. Precise data-testid (most reliable for Grok.com)
-    const byTestId = document.querySelector<HTMLElement>('[data-testid="sendButton"]');
-    if (byTestId) return byTestId;
+    const selectors = [
+        '[data-testid="sendButton"]', // Grok.com
+        '[data-testid="grok_send_button"]', // X.com
+        'button[aria-label="Grok send"]',
+        'button[aria-label="Grok送信"]',
+        'button[aria-label*="Send" i]',
+        'button[aria-label*="送信" i]',
+        '[role="button"][aria-label*="Send" i]',
+        '[role="button"][aria-label*="送信" i]',
+    ];
 
-    // 2. Aria-label (common in accessible apps, including X.com)
-    const byAriaLabel = document.querySelector<HTMLElement>(
-        'button[aria-label*="Send" i], button[aria-label*="送信" i], button[aria-label="Grok send"]'
-    );
-    if (byAriaLabel) return byAriaLabel;
-
-    // 3. X.com specific: looking for the send icon (it often has a specific SVG)
-    // On X.com, it might be a button with a specific testid or just the last button.
-    const xSendBtn = document.querySelector<HTMLElement>('button[data-testid="grok_send_button"]');
-    if (xSendBtn) return xSendBtn;
-
-    // 4. Fallback: Button with SVG in the chat input area
-    const buttons = document.querySelectorAll('button');
-    for (let i = 0; i < buttons.length; i++) {
-        const button = buttons[i];
-        if (button.innerText.includes('Send') || button.innerText.includes('送信')) return button;
-        const svg = button.querySelector('svg');
-        if (svg) {
-            // Very likely the send button if it's in the bottom right area
-            return button;
-        }
+    for (const s of selectors) {
+        const el = document.querySelector<HTMLElement>(s);
+        if (el) return el;
     }
 
+    // Fallback: search for buttons with a "send-like" icon
+    const btns = document.querySelectorAll('button, [role="button"]');
+    for (let i = 0; i < btns.length; i++) {
+        const btn = btns[i] as HTMLElement;
+        const label = (btn.getAttribute('aria-label') || '').toLowerCase();
+        const text = (btn.innerText || '').toLowerCase();
+        if (label.includes('send') || label.includes('送信') || text.includes('send') || text.includes('送信')) {
+            return btn;
+        }
+        if (btn.querySelector('svg')) {
+            const rect = btn.getBoundingClientRect();
+            if (rect.top > window.innerHeight / 2 && rect.right > window.innerWidth / 2) {
+                return btn;
+            }
+        }
+    }
     return null;
 };
 
-const handleKeydown = (e: KeyboardEvent): void => {
-    const target = e.composedPath()[0] as HTMLElement;
-    if (!target) return;
-
-    // More robust check for input-like elements
-    const isContentEditable = target.isContentEditable ||
-        target.getAttribute('contenteditable') === 'true' ||
-        target.closest('[contenteditable="true"]') !== null;
-    const isInputOrTextArea = target.tagName === 'TEXTAREA' || target.tagName === 'INPUT';
-
-    if (!isContentEditable && !isInputOrTextArea) return;
-
-    // Always ignore if IME is composing
-    if (e.isComposing || e.keyCode === 229) return;
-
-    const isModifierPressed = e.ctrlKey || e.metaKey;
-    const isEnter = e.key === 'Enter';
-
-    if (!isEnter) return;
-
-    console.log('[Grok-Fix] Enter detected. Modifier:', isModifierPressed, 'Shift:', e.shiftKey);
-
-    // Case: Ctrl/Cmd + Enter -> Force Send
-    if (isModifierPressed) {
-        e.stopImmediatePropagation();
-        e.preventDefault();
-        const sendBtn = findSendButton();
-        console.log('[Grok-Fix] Attempting to click send button:', sendBtn);
-        if (sendBtn) {
-            sendBtn.click();
-        }
-        return;
-    }
-
-    // Case: Enter alone (without Shift) -> Prevent Send and Insert Newline
-    if (!isModifierPressed && !e.shiftKey) {
-        e.stopImmediatePropagation();
-        e.preventDefault();
-
-        console.log('[Grok-Fix] Preventing default Enter, inserting newline');
-
-        // Attempt to insert newline
-        // For many React apps, execCommand is still the silver bullet for updating state correctly.
-        const success = document.execCommand('insertText', false, '\n');
-
-        // Fallback if execCommand fails (though it rarely does for text insertion)
-        if (!success && isInputOrTextArea) {
-            const input = target as HTMLInputElement | HTMLTextAreaElement;
-            const start = input.selectionStart || 0;
-            const end = input.selectionEnd || 0;
-            const value = input.value;
-            input.value = value.substring(0, start) + '\n' + value.substring(end);
-            input.selectionStart = input.selectionEnd = start + 1;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }
+const simulateClick = (el: HTMLElement) => {
+    console.log('[Grok-Fix] Simulating click on:', el);
+    el.click();
+    ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'].forEach(type => {
+        el.dispatchEvent(new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            pointerType: 'mouse'
+        }));
+    });
 };
 
-// Intercept at capturing phase
-window.addEventListener('keydown', handleKeydown, { capture: true });
-// Also intercept keypress just in case Grok uses it (rare nowadays but possible)
-window.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+const blockEnter = (e: KeyboardEvent): boolean => {
+    if (e.key !== 'Enter' && e.keyCode !== 13) return false;
+
+    const target = e.composedPath()[0] as HTMLElement;
+    if (!target) return false;
+
+    const isInput = target.isContentEditable ||
+        target.getAttribute('contenteditable') === 'true' ||
+        target.closest('[contenteditable="true"]') !== null ||
+        target.getAttribute('role') === 'textbox' ||
+        target.tagName === 'TEXTAREA' || target.tagName === 'INPUT';
+
+    if (!isInput) return false;
+    if (e.isComposing || e.keyCode === 229) return false;
+
+    const isModifier = e.ctrlKey || e.metaKey;
+
+    if (isModifier) {
+        if (e.type === 'keydown') {
+            console.log('[Grok-Fix] Ctrl/Cmd + Enter detected. Searching button...');
+            const btn = findSendButton();
+            if (btn) {
+                simulateClick(btn);
+            } else {
+                console.error('[Grok-Fix] Send button not found!');
+            }
+        }
         e.stopImmediatePropagation();
         e.preventDefault();
+        return true;
     }
-}, { capture: true });
 
+    if (!e.shiftKey) {
+        if (e.type === 'keydown') {
+            console.log('[Grok-Fix] Enter alone. Inserting newline.');
+            document.execCommand('insertText', false, '\n');
+        }
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return true;
+    }
 
-console.log('[Grok-Fix] Extension loaded and intercepting Enter key.');
+    return false;
+};
+
+// Intercept all related events at the earliest possible stage
+window.addEventListener('keydown', blockEnter, { capture: true });
+window.addEventListener('keypress', blockEnter, { capture: true });
+window.addEventListener('keyup', blockEnter, { capture: true });
+
+console.log('[Grok-Fix] Extension active with aggressive blocking. Domains:', location.hostname);

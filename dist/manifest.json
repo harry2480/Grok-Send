@@ -6,13 +6,15 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.ts-Dj5q0vr_.js"
+        "assets/index.ts-BWiY-zwI.js"
       ],
       "matches": [
         "https://grok.com/*",
         "https://x.ai/*",
-        "https://x.com/i/grok*"
-      ]
+        "https://x.com/i/grok*",
+        "https://twitter.com/i/grok*"
+      ],
+      "all_frames": true
     }
   ],
   "permissions": [
@@ -27,11 +29,12 @@
     {
       "matches": [
         "https://grok.com/*",
+        "https://twitter.com/*",
         "https://x.ai/*",
         "https://x.com/*"
       ],
       "resources": [
-        "assets/index.ts-Dj5q0vr_.js"
+        "assets/index.ts-BWiY-zwI.js"
       ],
       "use_dynamic_url": false
     }

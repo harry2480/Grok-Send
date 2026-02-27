@@ -11,8 +11,10 @@
             "matches": [
                 "https://grok.com/*",
                 "https://x.ai/*",
-                "https://x.com/i/grok*"
-            ]
+                "https://x.com/i/grok*",
+                "https://twitter.com/i/grok*"
+            ],
+            "all_frames": true
         }
     ],
     "permissions": [
