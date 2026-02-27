@@ -1,7 +1,6 @@
-# Grok Send Fix Extension (Grok 誤送信防止拡張)
-
 # Grok-Send
-このブラウザ拡張機能は、Grok (x.ai) および X.com (Twitter) 上の Grok において、**Enter** キー単体での意図しないメッセージ送信を防止します。メッセージを送信するには、**Ctrl + Enter** (Mac の場合は **Cmd + Enter** も可) を使用します。
+
+このブラウザ拡張機能は、Grok (x.ai) および X.com (Twitter) 上の Grok において、**Enter** キー単体での意図しないメッセージ送信を防止し、**Ctrl + Enter** (Mac の場合は **Cmd + Enter** も可) で送信するように変更します。
 
 ## 主な機能
 
