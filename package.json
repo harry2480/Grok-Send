@@ -1,0 +1,21 @@
+{
+  "name": "grok-send-extention",
+  "version": "1.0.0",
+  "description": "Prevent accidental sending on Grok",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.3.0",
+    "@types/chrome": "^0.0.308",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0"
+  }
+}
